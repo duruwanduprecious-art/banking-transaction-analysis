@@ -72,11 +72,11 @@ The raw banking statement dataset required extensive cleaning and transformation
 
 Data cleaning was performed in Power Query using the following steps:
 
-## 1. Data Consolidation
+**1. Data Consolidation** 
 - Imported the three separate bank statement tables into Power Query
 - Appended all tables into a single unified dataset for analysis
 
-## 2. Handling Fragmented Rows
+**2. Handling Fragmented Rows** 
 - Identified continuation rows containing incomplete transaction information
 - Used:
   - Fill Down
@@ -84,38 +84,43 @@ Data cleaning was performed in Power Query using the following steps:
   - Text.Combine
 to merge fragmented transaction descriptions into complete records
 
-## 3. Removing Unnecessary Rows
+**3. Removing Unnecessary Rows** 
 - Removed blank and invalid rows
 - Excluded closing balance rows and non-transaction entries
 
-## 4. Data Type Standardization
+**4. Data Type Standardization** 
+
 Converted columns into appropriate data types:
+
 - Transaction dates → Date type
 - Pay In / Pay Out / Amount / Balance → Decimal numbers
 - Transaction categories and channels → Text
 
-## 5. Null Value Handling
+**5. Null Value Handling**
 - Imputed missing values by replacing null in:
   - Pay In
   - Pay Out
 with `0` to ensure mathematical consistency during aggregations
 
-## 6. Feature Engineering
+**6. Feature Engineering**
+
 Created additional analytical columns to support time-series analysis:
+
 - Year
 - Month Name
 - Month Number
 - Quarter
 - Day Name
 
-## 7. Transaction Classification
+**7. Transaction Classification**
+
 Created custom transaction classifications including:
 
-### Transaction Type
+**Transaction Type**
 - Credit
 - Debit
 
-### Transaction Category
+**Transaction Category**
 - Transfer
 - Airtime
 - Bank Charges
@@ -123,12 +128,12 @@ Created custom transaction classifications including:
 
 These categories were derived from transaction descriptions using conditional logic.
 
-## 8. Text Cleaning and Standardization
+**8. Text Cleaning and Standardization**
 - Cleaned inconsistent transaction descriptions
 - Reduced excessively long transaction detail strings
 - Standardized text formatting for easier categorization and analysis
 
-## 9. Final Validation
+**9. Final Validation**
 - Verified row counts after transformation
 - Confirmed date consistency and transaction ranges
 - Checked for duplicate and missing records
@@ -274,8 +279,8 @@ ORDER BY total_spending DESC;
 ```sql
 SELECT
     transaction_category,
-    COUNT(*) AS transaction_count
-    SUM(pay_out) AS total_spending
+    COUNT(*) AS transaction_count,
+    SUM(pay_out) AS total_spending,
     MAX(pay_out) AS single_largest_expense
 FROM bank_transactions
 WHERE transaction_type = 'Debit'
@@ -283,7 +288,7 @@ GROUP BY transaction_category
 ORDER BY total_spending DESC;
 ```
 
-| Category | Transactions_count | Total Spending | single_largest_expense |
+| Category | Transactions_count | Total_spending | Single_largest_expense |
 |---|---|---|---|
 | Transfer | 242 | ₦967,147.86 | 25,026.88 |
 | Airtime | 165 | ₦136,850.00 | 3000 |
@@ -306,9 +311,9 @@ ORDER BY total_spending DESC;
 SELECT
 transaction_category,
 CASE
-    WHEN transaction_amount < 5000 THEN 'Low Spend (<5k)'
-    WHEN transaction_amount BETWEEN 5000 AND 20000 THEN 'Medium Spend (5k-20k)'
-    ELSE 'High Spend (>20k)'
+    WHEN transaction_amount < 5000 THEN 'Low Spend'
+    WHEN transaction_amount BETWEEN 5000 AND 15000 THEN 'Medium Spend'
+    ELSE 'High Spend'
 END AS spending_segment,
 COUNT(*) AS total_transactions
 FROM bank_transactions
@@ -322,9 +327,9 @@ ORDER BY total_transactions DESC;
 | Bank Charges | Low Spend | 223 |
 | Airtime | Low Spend | 162 |
 | Transfer | Low Spend | 161 |
-| Transfer | Medium Spend | 75 |
+| Transfer | Medium Spend | 67 |
 | Others | Low Spend | 12 |
-| Transfer | High Spend | 4 |
+| Transfer | High Spend | 12 |
 
 
 ## Transactions Greater Than 3 Times Average Debit Amount
@@ -344,18 +349,15 @@ ORDER BY transaction_amount DESC
 ```
 
 ### Insight
-- Most transfer transactions (**162 out of 242**) fell within the low-spend tier, indicating frequent small-value transfers. However, a significant portion of total financial outflow was concentrated within medium- (**75**) and high-spend (**4**) transfer transactions.
-- High-value debit outliers were exclusively associated with transfer activities.
-- Transaction descriptions revealed that many high-value transfers were linked to:
-  - Professional development investments
-  - Digital payment platforms
-  - Retail and lifestyle-related settlements
+- Most transfer transactions (**162 out of 242**) fell within the low-spend tier, indicating frequent small-value transfers. However, a significant portion of total financial outflow was concentrated within medium- (**67**) and high-spend (**12**) transfer transactions.
+- A deeper outlier analysis of transactions exceeding three times the average debit amount revealed that all major spending spikes were initially classified under the generic **Transfer** category.
+ - Further keyword analysis of transaction descriptions uncovered two dominant spending behaviors:
+    - **High-Spend Transfers (>₦15k):** Is primarily linked to professional development and career-related investments processed through platforms such as Paystack, including payments for SQL and Data Analytics training programs.
+    - **Medium-Spend Transfers (₦5k–₦15k):** Mostly associated with lifestyle and utility-related settlements routed through mobile wallet platforms such as OPay, covering expenses such as food purchases, transportation,  retail payments, and household items.
 
 ---
 
-## 8. Advanced Cumulative Velocity Analysis
-
-### A. Expense Accumulation & Burn Rate Tracking
+## 8. Cumulative Spending Progression
 
 ```sql
 DROP TABLE IF EXISTS temp_cumulative_transaction;
@@ -365,49 +367,73 @@ SELECT
     transaction_date,
     transaction_category,
     transaction_amount,
-    
     SUM(transaction_amount)
     OVER(
         ORDER BY transaction_date
         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
     ) AS running_total,
-    
     SUM(transaction_amount) OVER() AS grand_total
 FROM bank_transactions
-WHERE transaction_type = 'Debit';
+WHERE transaction_type = 'Debit'
+
+SELECT
+    transaction_date,
+    transaction_category,
+    transaction_amount
+ROUND((running_total/grand_total)*100,2)
+As cumulative_transaction
+FROM temp_cumulative_transaction
 ```
 
 ### Insight
-- Cumulative spending analysis showed that by **April 28**, approximately **97.77%** of total annual spending had already been accumulated.
-- This indicates that the majority of expense activity occurred during the earlier periods of the year, followed by relatively lower spending intensity afterward.
+- Cumulative spending analysis showed that the majority of debit spending occurred within the earlier months of the analysis period.
+- By **April 28**, over **97%** of total annual expenses had already been accumulated, indicating a slowdown in spending activity afterward.
 
 ---
 
-### B. Cashflow Velocity Analysis
+# Dashboard Preview
 
-```sql
-DROP TABLE IF EXISTS temp_cumulative_cashflow;
+## Financial Overview Dashboard
 
-CREATE TEMP TABLE temp_cumulative_cashflow AS
-SELECT
-    transaction_date,
-    transaction_type,
-    transaction_amount,
-    
-    SUM(transaction_amount)
-    OVER(
-        PARTITION BY transaction_type
-        ORDER BY transaction_date
-        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-    ) AS running_total,
-    
-    SUM(transaction_amount)
-    OVER(PARTITION BY transaction_type) AS grand_total
-FROM bank_transactions
-WHERE transaction_type IN ('Credit', 'Debit');
-```
+![Financial Overview](screenshots/dashboard1.png)
 
-### Insight
-- Credit transactions occurred less frequently but carried larger individual values, resulting in irregular spikes in cumulative income growth.
-- Debit transactions occurred more consistently and accumulated steadily over time.
-- The analysis highlights periods where spending velocity temporarily exceeded incoming cashflow velocity, contributing to short-term negative cashflow periods.
+## Spending Analysis Dashboard
+
+![Spending Analysis](screenshots/dashboard2.png)
+
+---
+
+# Recommendations
+
+Based on the SQL analysis and dashboard insights, the following recommendations were identified:
+
+**1. Reduce Transfer Spending Concentration;**
+Transfer transactions accounted for approximately **87.1% of total expenses**, making them the dominant driver of cash outflows. Implementing stricter transfer budgeting and periodic spending reviews could help improve expense control and reduce excessive capital leakage.
+
+**2. Monitor High-Value Transfer Activity:**
+Outlier analysis revealed that the largest debit spikes originated from transfer transactions. Establishing transaction thresholds and monitoring unusually large transfers can improve financial planning and cashflow stability.
+
+**3. Improve Monthly Cashflow Stability:**
+Several months, including January, April, July, August, and November, recorded negative net cashflows where expenses exceeded income. Creating monthly spending limits and aligning expenses more closely with expected income inflows may reduce recurring deficits.
+
+**4. Review Recurring Bank Charges:**
+Although bank charges contributed minimally to total spending value, they occurred at very high frequency **(223 transactions)**. Periodic reviews of banking fees and transaction charges could help minimize unnecessary operational costs over time.
+
+**5. Optimize Early-Month Spending Behavior:**
+Monday alone accounted for nearly half of all annual spending activity, suggesting heavy front-loaded weekly expenses. Distributing major payments more evenly across the week may improve short-term liquidity management.
+
+**6. Track Lifestyle vs Investment Spending Separately:**
+Transaction text analysis showed that high-value transfers were largely linked to professional development and career investments, while medium-value transfers were associated with lifestyle spending. Separating these spending categories more explicitly would improve financial tracking and budgeting accuracy.
+
+---
+
+# Future Improvements
+
+Possible future enhancements include:
+- Forecasting future expenses
+- Automated ETL pipelines
+- Real-time dashboard integration
+
+# Conclusion
+
+This project demonstrates an end-to-end data analytics workflow involving data cleaning, SQL-based exploratory analysis, business insight generation, and dashboard development using Power BI.

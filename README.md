@@ -395,11 +395,11 @@ FROM temp_cumulative_transaction
 
 ## Financial Overview Dashboard
 
-![Financial Overview](screenshots/dashboard1.png)
+![Financial Overview](Dashboard Screenshots/Financial_overview.png)
 
 ## Spending Analysis Dashboard
 
-![Spending Analysis](screenshots/dashboard2.png)
+![Spending Analysis](Dashboard Screenshots/Spending_analysis.png)
 
 ---
 

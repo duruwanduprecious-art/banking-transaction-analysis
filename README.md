@@ -1,4 +1,4 @@
-# Banking Transaction Analysis Using PostgreSQL & Power BI
+# Personal Banking Transaction Analysis Using PostgreSQL & Power BI
 ## Project Overview
 
 This project analyzes personal banking transactions using PostgreSQL and Power BI. The workflow includes data cleaning in Power Query, exploratory data analysis (EDA) in SQL, and dashboard development in Power BI.
@@ -427,12 +427,19 @@ Transaction text analysis showed that high-value transfers were largely linked t
 
 ---
 
+# Business Impact
+
+The analysis revealed recurring periods of negative cash flow and a low overall savings rate, highlighting weaknesses in personal spending behavior and financial planning. These findings informed the decision to develop a Python-based expense tracker that introduces budgeting, spending alerts, and cash flow monitoring to encourage more disciplined financial management.
+
+---
+
 # Future Improvements
 
 Possible future enhancements include:
-- Forecasting future expenses
-- Automated ETL pipelines
-- Real-time dashboard integration
+**- Expense Forecasting:** Use time-series forecasting techniques to predict future income, expenses, and cash flow trends.
+**- Automated ETL Pipeline:** Automate data extraction, transformation, and loading to eliminate manual data preparation.
+**- Real-Time Dashboard Integration:** Connect the dashboard to live banking or transaction data for continuous financial monitoring.
+**- Python Expense Tracker Integration:** Integrate the dashboard with the Python expense tracker to provide automated budget monitoring, spending-limit alerts, and savings progress tracking.
 
 # Conclusion
 
